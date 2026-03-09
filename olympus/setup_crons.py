@@ -1,16 +1,17 @@
 """
 setup_crons.py — Register all OLYMPUS cron jobs with hermes-agent
 
-Run once after installing OLYMPUS:
-    python olympus/setup_crons.py
-
-This script reads the three cron job definitions and registers them
-using the hermes CLI (or prints the commands if --dry-run is passed).
+This script registers the three OLYMPUS autonomous jobs using the 
+internal hermes-agent Python API (cron.jobs), as the CLI 'cron add' 
+command is not available in this version.
 """
 
 import argparse
-import subprocess
 import sys
+import os
+
+# Add root directory to path for imports
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from olympus.cron.argus_watch    import CRON_DEFINITION as ARGUS
 from olympus.cron.asclepius_daily import CRON_DEFINITION as ASCLEPIUS
@@ -22,41 +23,63 @@ CRONS = [ARGUS, ASCLEPIUS, HERACLES]
 
 def register_cron(defn: dict, dry_run: bool, display: OlympusDisplay) -> bool:
     """
-    Register a single cron job via the hermes CLI.
+    Register a single cron job via the hermes Python API.
     Returns True on success, False on failure.
     """
-    cmd = [
-        "hermes", "cron", "add",
-        "--name",     defn["name"],
-        "--schedule", defn["schedule"],
-        "--skill",    defn["skill"],
-        "--goal",     defn["goal"],
-    ]
-
+    # Construction of the prompt for the cron system
+    # We include the skill name as metadata in the prompt so the agent knows which logic to use
+    prompt = f"[Skill: {defn['skill']}] {defn['goal']}"
+    
     if dry_run:
-        display.status(f"[DRY RUN] {' '.join(cmd)}")
+        display.status(f"[DRY RUN] Registering '{defn['name']}' with schedule '{defn['schedule']}'")
+        display.status(f"          Prompt: {prompt}")
         return True
 
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-        if result.returncode == 0:
-            display.cron_registered(defn["name"], defn["schedule"])
+        # Local import to avoid circular dependencies when called from cron/jobs.py
+        from cron.jobs import create_job, list_jobs
+        
+        # Check if already exists
+        existing = {j["name"] for j in list_jobs()}
+        if defn["name"] in existing:
+            display.status(f"Job '{defn['name']}' is already registered.")
             return True
-        else:
-            display.error(
-                f"Failed to register {defn['name']}: "
-                f"{result.stderr.strip() or result.stdout.strip()}"
-            )
-            return False
-    except FileNotFoundError:
-        display.error(
-            "hermes CLI not found. "
-            "Please ensure hermes-agent is installed and 'hermes' is in your PATH."
+
+        # Register
+        create_job(
+            prompt=prompt,
+            schedule=defn["schedule"],
+            name=defn["name"]
         )
+        display.cron_registered(defn["name"], defn["schedule"])
+        return True
+    except Exception as e:
+        display.error(f"Failed to register {defn['name']}: {str(e)}")
         return False
-    except subprocess.TimeoutExpired:
-        display.error(f"Timeout registering cron: {defn['name']}")
-        return False
+
+
+def maybe_register_all() -> None:
+    """
+    Background-safe registration of all OLYMPUS cron jobs.
+    Only registers if they don't already exist.
+    """
+    try:
+        from cron.jobs import create_job, list_jobs
+        existing_names = {j["name"] for j in list_jobs()}
+    except ImportError:
+        return
+    
+    for defn in CRONS:
+        if defn["name"] not in existing_names:
+            prompt = f"[Skill: {defn['skill']}] {defn['goal']}"
+            try:
+                create_job(
+                    prompt=prompt,
+                    schedule=defn["schedule"],
+                    name=defn["name"]
+                )
+            except Exception:
+                pass
 
 
 def main() -> None:
@@ -65,7 +88,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--dry-run", action="store_true",
-        help="Print commands without executing them."
+        help="Print details without executing them."
     )
     parser.add_argument(
         "--quiet", action="store_true",
@@ -75,7 +98,7 @@ def main() -> None:
 
     display = OlympusDisplay(quiet=args.quiet)
     display.banner()
-    display.god_speaking("OLYMPUS", "Setting up autonomous cron jobs…")
+    display.god_speaking("OLYMPUS", "Registering autonomous cron jobs via Python API…")
     display.divider()
 
     success_count = 0
@@ -88,38 +111,12 @@ def main() -> None:
     if success_count == len(CRONS):
         display.success(
             f"All {len(CRONS)} cron jobs registered successfully.\n"
-            "   ARGUS watches every 30 minutes.\n"
-            "   ASCLEPIUS wakes at 09:00 daily.\n"
-            "   HERACLES rises every Sunday at 19:00."
+            "   The gods are now watching in the background."
         )
     else:
         failed = len(CRONS) - success_count
-        display.error(f"{failed} cron job(s) failed to register. Check output above.")
+        display.error(f"{failed} cron job(s) failed to register.")
         sys.exit(1)
-
-
-def maybe_register_all() -> None:
-    """
-    Background-safe registration of all OLYMPUS cron jobs.
-    Only registers if they don't already exist.
-    """
-    from cron.jobs import list_jobs
-    existing_names = {j["name"] for j in list_jobs()}
-    
-    for defn in CRONS:
-        if defn["name"] not in existing_names:
-            # Run registration quietly in background
-            cmd = [
-                "hermes", "cron", "add",
-                "--name",     defn["name"],
-                "--schedule", defn["schedule"],
-                "--skill",    defn["skill"],
-                "--goal",     defn["goal"],
-            ]
-            try:
-                subprocess.run(cmd, capture_output=True, timeout=10)
-            except Exception:
-                pass
 
 
 if __name__ == "__main__":

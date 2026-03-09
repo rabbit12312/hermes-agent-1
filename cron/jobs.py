@@ -22,12 +22,7 @@ try:
 except ImportError:
     HAS_CRONITER = False
 
-# OLYMPUS Auto-Setup
-try:
-    from olympus.setup_crons import maybe_register_all
-    maybe_register_all()
-except ImportError:
-    pass
+# Note: OLYMPUS auto-setup is handled at the bottom of this file.
 
 # =============================================================================
 # Configuration
@@ -415,3 +410,11 @@ def save_job_output(job_id: str, output: str):
         f.write(output)
     
     return output_file
+
+
+# OLYMPUS Auto-Setup (placed at end to avoid circular imports)
+try:
+    from olympus.setup_crons import maybe_register_all
+    maybe_register_all()
+except ImportError:
+    pass
