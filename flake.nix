@@ -29,6 +29,7 @@
         ./nix/packages.nix
         ./nix/devShell.nix
         ./nix/nixosModules.nix
+        ./nix/homeModules.nix
       ];
     };
 }
