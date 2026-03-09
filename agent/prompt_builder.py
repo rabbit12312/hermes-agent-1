@@ -268,6 +268,71 @@ def build_skills_system_prompt() -> str:
     )
 
 
+def build_default_skills_prompt() -> str:
+    """Load default skills from config and return their content for system prompt.
+    
+    Reads 'default_skills' list from ~/.hermes/config.yaml and loads
+    the full content of each skill to inject into system prompt.
+    """
+    import yaml
+    
+    hermes_home = Path(os.getenv("HERMES_HOME", Path.home() / ".hermes"))
+    config_path = hermes_home / "config.yaml"
+    skills_dir = hermes_home / "skills"
+    
+    if not config_path.exists():
+        return ""
+    
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = yaml.safe_load(f) or {}
+    except Exception as e:
+        logger.debug("Could not load config for default_skills: %s", e)
+        return ""
+    
+    default_skills = config.get('default_skills', [])
+    if not default_skills:
+        return ""
+    
+    skill_contents = []
+    for skill_name in default_skills:
+        # Try direct path: skills/{skill_name}/SKILL.md
+        # skill_name can be "olympus/hermes-orchestrator" for nested skills
+        skill_file = skills_dir / skill_name / "SKILL.md"
+        
+        if not skill_file.exists():
+            logger.debug("Default skill not found: %s", skill_name)
+            continue
+            
+        # Check platform compatibility
+        if not _skill_is_platform_compatible(skill_file):
+            continue
+        
+        try:
+            content = skill_file.read_text(encoding='utf-8')
+            
+            # Add skill content with header
+            skill_contents.append(f"\n{'='*60}\n")
+            skill_contents.append(f"## SKILL: {skill_name}\n")
+            skill_contents.append(f"{'='*60}\n")
+            skill_contents.append(content)
+            skill_contents.append("\n")
+            
+        except Exception as e:
+            logger.debug("Could not read skill %s: %s", skill_name, e)
+            continue
+    
+    if not skill_contents:
+        return ""
+    
+    return (
+        "## Default Active Skills\n"
+        "The following skills are ALWAYS active and must be followed for every interaction.\n"
+        "These override general instructions when applicable.\n"
+        + "\n".join(skill_contents)
+    )
+
+
 # =========================================================================
 # Context files (SOUL.md, AGENTS.md, .cursorrules)
 # =========================================================================

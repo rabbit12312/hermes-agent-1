@@ -87,7 +87,7 @@ from agent.model_metadata import (
 )
 from agent.context_compressor import ContextCompressor
 from agent.prompt_caching import apply_anthropic_cache_control
-from agent.prompt_builder import build_skills_system_prompt, build_context_files_prompt
+from agent.prompt_builder import build_skills_system_prompt, build_context_files_prompt, build_default_skills_prompt
 from agent.display import (
     KawaiiSpinner, build_tool_preview as _build_tool_preview,
     get_cute_tool_message as _get_cute_tool_message_impl,
@@ -1413,6 +1413,11 @@ class AIAgent:
         skills_prompt = build_skills_system_prompt() if has_skills_tools else ""
         if skills_prompt:
             prompt_parts.append(skills_prompt)
+        
+        # Load default skills from config (always-active skills like Olympus)
+        default_skills_prompt = build_default_skills_prompt()
+        if default_skills_prompt:
+            prompt_parts.append(default_skills_prompt)
 
         if not self.skip_context_files:
             context_files_prompt = build_context_files_prompt()
