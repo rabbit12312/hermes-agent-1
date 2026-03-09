@@ -165,8 +165,36 @@ DEFAULT_CONFIG = {
     # Permanently allowed dangerous command patterns (added via "always" approval)
     "command_allowlist": [],
 
+    # OLYMPUS Second Brain configuration
+    "olympus": {
+        "enabled": true,
+        "asclepius": {
+            "enabled": true,
+            "run_time": "09:00",
+            "deliver_to": "telegram",
+        },
+        "argus": {
+            "enabled": true,
+            "check_interval": "30m",
+        },
+        "heracles": {
+            "enabled": true,
+            "day": "sunday",
+            "time": "19:00",
+        },
+        # Default OLYMPUS skills (always loaded)
+        "default_skills": [
+            "olympus/hermes-orchestrator",
+            "olympus/perseus-capture",
+            "olympus/mnemosyne-search",
+            "olympus/asclepius-insights",
+            "olympus/argus-monitor",
+            "olympus/heracles-digest",
+        ],
+    },
+
     # Config schema version - bump this when adding new required fields
-    "_config_version": 5,
+    "_config_version": 6,
 }
 
 # =============================================================================
@@ -180,6 +208,7 @@ ENV_VARS_BY_VERSION: Dict[int, List[str]] = {
     4: ["VOICE_TOOLS_OPENAI_KEY", "ELEVENLABS_API_KEY"],
     5: ["WHATSAPP_ENABLED", "WHATSAPP_MODE", "WHATSAPP_ALLOWED_USERS",
         "SLACK_BOT_TOKEN", "SLACK_APP_TOKEN", "SLACK_ALLOWED_USERS"],
+    6: [],  # OLYMPUS skills added as default, no new env vars required
 }
 
 # Required environment variables with metadata for migration prompts.

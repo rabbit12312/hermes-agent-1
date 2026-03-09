@@ -273,6 +273,14 @@ def build_default_skills_prompt() -> str:
     
     Reads 'default_skills' list from ~/.hermes/config.yaml and loads
     the full content of each skill to inject into system prompt.
+    
+    OLYMPUS skills are always loaded by default:
+    - olympus/hermes-orchestrator
+    - olympus/perseus-capture
+    - olympus/mnemosyne-search
+    - olympus/asclepius-insights
+    - olympus/argus-monitor
+    - olympus/heracles-digest
     """
     import yaml
     
@@ -280,19 +288,34 @@ def build_default_skills_prompt() -> str:
     config_path = hermes_home / "config.yaml"
     skills_dir = hermes_home / "skills"
     
-    if not config_path.exists():
+    # OLYMPUS skills always loaded by default
+    olympus_skills = [
+        "olympus/hermes-orchestrator",
+        "olympus/perseus-capture",
+        "olympus/mnemosyne-search",
+        "olympus/asclepius-insights",
+        "olympus/argus-monitor",
+        "olympus/heracles-digest",
+    ]
+    
+    # Check if skills directory exists
+    if not skills_dir.exists():
         return ""
     
-    try:
-        with open(config_path, 'r', encoding='utf-8') as f:
-            config = yaml.safe_load(f) or {}
-    except Exception as e:
-        logger.debug("Could not load config for default_skills: %s", e)
-        return ""
+    default_skills = olympus_skills.copy()  # Start with OLYMPUS skills
     
-    default_skills = config.get('default_skills', [])
-    if not default_skills:
-        return ""
+    # Load additional skills from config if it exists
+    if config_path.exists():
+        try:
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = yaml.safe_load(f) or {}
+            # Add user-defined default skills (excluding olympus ones to avoid duplicates)
+            user_skills = config.get('default_skills', [])
+            for skill in user_skills:
+                if skill not in default_skills:
+                    default_skills.append(skill)
+        except Exception as e:
+            logger.debug("Could not load config for default_skills: %s", e)
     
     skill_contents = []
     for skill_name in default_skills:

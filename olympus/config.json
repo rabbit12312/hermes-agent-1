@@ -1,0 +1,16 @@
+{
+  "asclepius": {
+    "enabled": true,
+    "run_time": "09:00",
+    "deliver_to": "telegram"
+  },
+  "argus": {
+    "enabled": true,
+    "check_interval": "30m"
+  },
+  "heracles": {
+    "enabled": true,
+    "day": "sunday",
+    "time": "19:00"
+  }
+}
