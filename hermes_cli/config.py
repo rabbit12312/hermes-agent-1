@@ -167,18 +167,18 @@ DEFAULT_CONFIG = {
 
     # OLYMPUS Second Brain configuration
     "olympus": {
-        "enabled": true,
+        "enabled": True,
         "asclepius": {
-            "enabled": true,
+            "enabled": True,
             "run_time": "09:00",
             "deliver_to": "telegram",
         },
         "argus": {
-            "enabled": true,
+            "enabled": True,
             "check_interval": "30m",
         },
         "heracles": {
-            "enabled": true,
+            "enabled": True,
             "day": "sunday",
             "time": "19:00",
         },
